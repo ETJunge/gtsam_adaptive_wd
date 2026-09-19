@@ -59,7 +59,8 @@ public:
   Result update(const NonlinearFactorGraph& newFactors = NonlinearFactorGraph(),
                 const Values& newTheta = Values(),
                 const KeyTimestampMap& timestamps = KeyTimestampMap(),
-                const FactorIndices& factorsToRemove = FactorIndices()) override;
+                const FactorIndices& factorsToRemove = FactorIndices(),
+                const double adaptiveSmootherLag = -1.0) override;
 
   /** Compute an estimate from the incomplete linear delta computed during the last update.
    * This delta is incomplete because it was not updated below wildfire_threshold.  If only
@@ -126,7 +127,14 @@ public:
       const NonlinearFactorGraph& graph, const Values& theta, const KeyVector& keys,
       const GaussianFactorGraph::Eliminate& eliminateFunction = EliminatePreferCholesky);
 
-protected:
+  /** Deep clone the current Smoother
+   */
+  const BatchFixedLagSmoother deepClone();
+
+  /// Get the initial value when calling update()
+  const gtsam::Values& getInitialTheta() const { return initialTheta_; }
+
+ protected:
 
   /** A typedef defining an Key-Factor mapping **/
   typedef std::map<Key, KeySet > FactorIndex;
@@ -159,6 +167,9 @@ protected:
 
   /** A cross-reference structure to allow efficient factor lookups by key **/
   FactorIndex factorIndex_;
+
+  /** Store initial value when calling update() */
+  gtsam::Values initialTheta_;
 
   /** Augment the list of factors with a set of new factors */
   void insertFactors(const NonlinearFactorGraph& newFactors);

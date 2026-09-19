@@ -189,6 +189,9 @@ class PreintegratedImuMeasurements {
   void print(string s = "") const;
   bool equals(const gtsam::PreintegratedImuMeasurements& expected, double tol);
 
+  // 
+  PreintegratedImuMeasurements deepClone();
+
   // Standard Interface
   void integrateMeasurement(gtsam::Vector measuredAcc, gtsam::Vector measuredOmega,
       double deltaT);

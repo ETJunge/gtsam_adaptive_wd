@@ -41,10 +41,31 @@ bool IncrementalFixedLagSmoother::equals(const FixedLagSmoother& rhs,
       && isam_.equals(e->isam_, tol);
 }
 
+std::string IncrementalFixedLagSmoother::equalsDetail(
+    const FixedLagSmoother& rhs, double tol) {
+  const IncrementalFixedLagSmoother* e =
+      dynamic_cast<const IncrementalFixedLagSmoother*>(&rhs);
+  std::string ret = "";
+  if (e == nullptr){
+    ret += "nullptr";
+    return ret;
+  }
+  ret += " 1.FixedLagSmoother:";
+  if (FixedLagSmoother::equals(*e, tol)){
+    ret += "true";
+  } else {
+    ret += "false";
+  }
+  ret += " 2.isam:";
+  ret += isam_.equalsDetail(e->isam_, tol);
+  return ret;
+}
+
 /* ************************************************************************* */
 FixedLagSmoother::Result IncrementalFixedLagSmoother::update(
     const NonlinearFactorGraph& newFactors, const Values& newTheta,
-    const KeyTimestampMap& timestamps, const FactorIndices& factorsToRemove) {
+    const KeyTimestampMap& timestamps, const FactorIndices& factorsToRemove,
+    const double adaptiveSmootherLag) {
 
   const bool debug = ISDEBUG("IncrementalFixedLagSmoother update");
 
@@ -66,9 +87,12 @@ FixedLagSmoother::Result IncrementalFixedLagSmoother::update(
   if (debug)
     std::cout << "Current Timestamp: " << current_timestamp << std::endl;
 
+  double smootherLagToUse = smootherLag_;
+  if (-1.0 != adaptiveSmootherLag && adaptiveSmootherLag < smootherLag_) {
+    smootherLagToUse = adaptiveSmootherLag;
+  }
   // Find the set of variables to be marginalized out
-  KeyVector marginalizableKeys = findKeysBefore(
-      current_timestamp - smootherLag_);
+  KeyVector marginalizableKeys = findKeysBefore(current_timestamp - smootherLagToUse);
 
   if (debug) {
     std::cout << "Marginalizable Keys: ";
@@ -153,6 +177,15 @@ FixedLagSmoother::Result IncrementalFixedLagSmoother::update(
     PrintSymbolicTree(isam_, "Final Bayes Tree:");
     std::cout << "END" << std::endl;
   }
+  
+  // Update initial Value
+  // Remove marginalized keys from initialTheta_
+  for (Key key : marginalizableKeys) {
+    if (initialTheta_.exists(key)) {
+      initialTheta_.erase(key);
+    }
+  }
+  initialTheta_.insert_or_assign(newTheta);  // insert or update all keys
 
   // TODO: Fill in result structure
   Result result;
@@ -168,6 +201,76 @@ FixedLagSmoother::Result IncrementalFixedLagSmoother::update(
     std::cout << "IncrementalFixedLagSmoother::update() Finish" << std::endl;
 
   return result;
+}
+
+/* ************************************************************************* */
+Values IncrementalFixedLagSmoother::calculateSubEstimate(
+    const double adaptiveSmootherLag, const ISAM2Params& isamParam) {
+  FastVector<size_t> removedFactors;
+  std::optional<FastMap<Key, int> > constrainedKeys = {};
+
+  // Get current timestamp
+  double current_timestamp = getCurrentTimestamp();
+
+  double smootherLagToUse = smootherLag_;
+  if (-1.0 != adaptiveSmootherLag && adaptiveSmootherLag < smootherLag_) {
+    smootherLagToUse = adaptiveSmootherLag;
+  }
+  // Find the set of variables to be marginalized out
+  KeyVector marginalizableKeys =
+      findKeysBefore(current_timestamp - smootherLagToUse);
+
+  // Force iSAM2 to put the marginalizable variables at the beginning
+  createOrderingConstraints(marginalizableKeys, constrainedKeys);
+
+  std::unordered_set<Key> additionalKeys =
+      BayesTreeMarginalizationHelper<ISAM2>::gatherAdditionalKeysToReEliminate(
+          isam_, marginalizableKeys);
+  KeyList additionalMarkedKeys(additionalKeys.begin(), additionalKeys.end());
+
+  // temp iSAM2
+  subIsam_ = isam_.deepClone(isamParam);
+  isamResult_ =
+      subIsam_.update(isam_.getFactorsUnsafe(), initialTheta_, {},
+                       constrainedKeys, {}, additionalMarkedKeys); // isam_.calculateEstimate()
+
+  // Marginalize out any needed variables
+  if (marginalizableKeys.size() > 0) {
+    FastList<Key> leafKeys(marginalizableKeys.begin(),
+                           marginalizableKeys.end());
+    subIsam_.marginalizeLeaves(leafKeys);
+  }
+
+  return subIsam_.calculateEstimate();
+}
+
+/* ************************************************************************* */
+const IncrementalFixedLagSmoother IncrementalFixedLagSmoother::deepClone(
+    const bool rewrite) {
+  IncrementalFixedLagSmoother outputSmoother(smootherLag_, params());
+
+  std::string fileName = "saved_solver.xml";
+  ISAM2 outputIsam;
+
+  if (rewrite) {
+    outputIsam = isam_.deepClone(isam_.params());
+  } else {
+    outputIsam = isam_;
+  }
+  outputSmoother.setISAM2(outputIsam);
+
+  Values newInitialTheta(initialTheta_);
+  outputSmoother.setInitialTheta(newInitialTheta);
+
+  // outputSmoother.updateKeyTimestampMap(keyTimestampMap_);
+  outputSmoother.setKeyTimestampMap(keyTimestampMap_, timestampKeyMap_);
+  return outputSmoother;
+}
+
+/* ************************************************************************* */
+void IncrementalFixedLagSmoother::forceRelinearize() {
+  isam_.update(NonlinearFactorGraph(), Values(), FactorIndices(), {}, {}, {},
+               true);
 }
 
 /* ************************************************************************* */
@@ -263,3 +366,4 @@ void IncrementalFixedLagSmoother::PrintSymbolicTreeHelper(
 
 /* ************************************************************************* */
 } /// namespace gtsam
+

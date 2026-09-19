@@ -52,7 +52,8 @@ Matrix BatchFixedLagSmoother::marginalCovariance(Key key) const {
 /* ************************************************************************* */
 FixedLagSmoother::Result BatchFixedLagSmoother::update(
     const NonlinearFactorGraph& newFactors, const Values& newTheta,
-    const KeyTimestampMap& timestamps, const FactorIndices& factorsToRemove) {
+    const KeyTimestampMap& timestamps, const FactorIndices& factorsToRemove,
+    const double adaptiveSmootherLag) {
 
   // Update all of the internal variables with the new information
   gttic(augment_system);
@@ -81,9 +82,12 @@ FixedLagSmoother::Result BatchFixedLagSmoother::update(
   // Get current timestamp
   double current_timestamp = getCurrentTimestamp();
 
+  double smootherLagToUse = smootherLag_;
+  if (-1.0 != adaptiveSmootherLag && adaptiveSmootherLag < smootherLag_) {
+    smootherLagToUse = adaptiveSmootherLag;
+  }
   // Find the set of variables to be marginalized out
-  KeyVector marginalizableKeys = findKeysBefore(
-      current_timestamp - smootherLag_);
+  KeyVector marginalizableKeys = findKeysBefore(current_timestamp - smootherLagToUse);
 
   // Reorder
   gttic(reorder);
@@ -104,6 +108,15 @@ FixedLagSmoother::Result BatchFixedLagSmoother::update(
     marginalize(marginalizableKeys);
   }
   gttoc(marginalize);
+
+  // Update initial Value
+  // Remove marginalized keys from initialTheta_
+  for (Key key : marginalizableKeys) {
+    if (initialTheta_.exists(key)) {
+      initialTheta_.erase(key);
+    }
+  }
+  initialTheta_.insert_or_assign(newTheta);  // insert or update all keys
 
   return result;
 }
@@ -443,4 +456,17 @@ NonlinearFactorGraph BatchFixedLagSmoother::CalculateMarginalFactors(
 }
 
 /* ************************************************************************* */
+const BatchFixedLagSmoother BatchFixedLagSmoother::deepClone(){
+  BatchFixedLagSmoother outputSmoother(smootherLag_, params(),enforceConsistency_);
+  outputSmoother.factorIndex_ = factorIndex_;
+  outputSmoother.factors_ = factors_.clone();
+  outputSmoother.theta_ = theta_;
+  outputSmoother.linearValues_ = linearValues_;
+  outputSmoother.ordering_ = ordering_;
+  outputSmoother.delta_ = delta_;
+  outputSmoother.availableSlots_ = availableSlots_;
+
+  outputSmoother.initialTheta_ = initialTheta_;
+  return outputSmoother;
+}
 } /// namespace gtsam

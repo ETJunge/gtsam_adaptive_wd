@@ -57,6 +57,42 @@ void PreintegratedImuMeasurementsT<PreintegrationType>::resetIntegration() {
 
 //------------------------------------------------------------------------------
 template <class PreintegrationType>
+PreintegratedImuMeasurementsT<PreintegrationType>
+PreintegratedImuMeasurementsT<PreintegrationType>::deepClone() const {
+  // 1. Clone the PreintegrationParams (deep copy instead of shared_ptr alias)
+  // auto newParams = this->PreintegrationType::params()->clone();
+
+  // 2. Construct a new PIM with cloned params and same bias
+  PreintegratedImuMeasurementsT<PreintegrationType> copy(
+      this->PreintegrationType::params(), this->PreintegrationType::biasHat());
+
+  // 3. Copy over all integration results
+  copy.deltaTij_ = this->PreintegrationType::deltaTij_;
+  copy.preintMeasCov_ = this->preintMeasCov_;
+
+  // 4. If the PreintegrationType has extra fields, copy them too
+  if constexpr (std::is_base_of<ManifoldPreintegration,
+                                PreintegrationType>::value) {
+    // PreintegratedCombinedMeasurements stores additional Jacobians
+    copy.deltaXij_ = this->PreintegrationType::deltaXij_;
+    copy.delRdelBiasOmega_ = this->PreintegrationType::delRdelBiasOmega_;
+    copy.delPdelBiasAcc_ = this->PreintegrationType::delPdelBiasAcc_;
+    copy.delPdelBiasOmega_ = this->PreintegrationType::delPdelBiasOmega_;
+    copy.delVdelBiasAcc_ = this->PreintegrationType::delVdelBiasAcc_;
+    copy.delVdelBiasOmega_ = this->PreintegrationType::delVdelBiasOmega_;
+  } else if constexpr (std::is_base_of<TangentPreintegration,
+                                       PreintegrationType>::value) {
+    copy.preintegrated_ = this->PreintegrationType::preintegrated_;
+    copy.preintegrated_H_biasAcc_ =
+        this->PreintegrationType::preintegrated_H_biasAcc_;
+    copy.preintegrated_H_biasOmega_ =
+        this->PreintegrationType::preintegrated_H_biasOmega_;
+  }
+  return copy;
+}
+
+//------------------------------------------------------------------------------
+template <class PreintegrationType>
 void PreintegratedImuMeasurementsT<PreintegrationType>::integrateMeasurement(
     const Vector3& measuredAcc, const Vector3& measuredOmega, double dt) {
   if (dt <= 0) {

@@ -45,6 +45,8 @@ using CustomErrorFunction = std::function<Vector(const CustomFactor &, const Val
 class GTSAM_EXPORT CustomFactor: public NoiseModelFactor {
 protected:
   CustomErrorFunction error_function_;
+  std::string factor_name_ = "CustomFactor";
+  std::string factor_info_ = "";
 
 protected:
 
@@ -69,6 +71,24 @@ public:
     this->error_function_ = errorFunction;
   }
 
+  CustomFactor(const SharedNoiseModel &noiseModel, const KeyVector &keys,
+               const CustomErrorFunction &errorFunction,
+               const std::string factorName, const std::string factorInfo)
+      : Base(noiseModel, keys) {
+    this->error_function_ = errorFunction;
+    this->factor_name_ = factorName;
+    this->factor_info_ = factorInfo;
+  }
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
+
+  std::string getFactorName() const { return this->factor_name_; }
+
+  std::string getFactorInfo() const { return this->factor_info_; }
   /**
     * Calls the errorFunction closure, which is a std::function object
     * One can check if a derivative is needed in the errorFunction by checking the length of Jacobian array

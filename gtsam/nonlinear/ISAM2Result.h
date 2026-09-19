@@ -203,6 +203,13 @@ struct ISAM2Result {
   bool getBatchReorderTriggered() const { return batchReorderTriggered; }
   double getErrorBefore() const { return errorBefore ? *errorBefore : std::nan(""); }
   double getErrorAfter() const { return errorAfter ? *errorAfter : std::nan(""); }
+
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
+  /** Serialization function */
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE& ar, const unsigned int /*version*/) {}
+#endif
 };
 
 }  // namespace gtsam
