@@ -126,6 +126,9 @@ public:
   /// Re-initialize PreintegratedImuMeasurements
   void resetIntegration() override;
 
+  /// deep clone the current PreintegratedImuMeasurements 
+  PreintegratedImuMeasurementsT deepClone() const;
+
   /**
    * Add a single IMU measurement to the preintegration.
    * Both accelerometer and gyroscope measurements are taken to be in the sensor

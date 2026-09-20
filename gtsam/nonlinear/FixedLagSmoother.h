@@ -28,11 +28,15 @@
 #include <map>
 #include <vector>
 
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
+#include <boost/serialization/assume_abstract.hpp>
+#endif
+
 namespace gtsam {
 
 class GTSAM_EXPORT FixedLagSmoother {
 
-public:
+ public:
 
   /// Typedef for a shared pointer to an Incremental Fixed-Lag Smoother
   typedef std::shared_ptr<FixedLagSmoother> shared_ptr;
@@ -107,10 +111,12 @@ public:
   }
 
   /** Add new factors, updating the solution and relinearizing as needed. */
-  virtual Result update(const NonlinearFactorGraph& newFactors = NonlinearFactorGraph(),
-                        const Values& newTheta = Values(),
-                        const KeyTimestampMap& timestamps = KeyTimestampMap(),
-                        const FactorIndices& factorsToRemove = FactorIndices()) = 0;
+  virtual Result update(
+      const NonlinearFactorGraph& newFactors = NonlinearFactorGraph(),
+      const Values& newTheta = Values(),
+      const KeyTimestampMap& timestamps = KeyTimestampMap(),
+      const FactorIndices& factorsToRemove = FactorIndices(),
+      const double adaptiveSmootherLag = -1.0) = 0;
 
   /** Compute an estimate from the incomplete linear delta computed during the last update.
    * This delta is incomplete because it was not updated below wildfire_threshold.  If only
@@ -152,6 +158,13 @@ protected:
 
   /** Find all of the keys associated with timestamps before the provided time */
   KeyVector findKeysAfter(double timestamp) const;
+
+private:
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
+  friend class boost::serialization::access;
+  template <class ARCHIVE>
+  void serialize(ARCHIVE& /*ar*/, const unsigned int /*version*/) {}
+#endif
 
 }; // FixedLagSmoother
 

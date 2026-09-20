@@ -66,6 +66,44 @@ bool ISAM2::equals(const ISAM2& other, double tol) const {
          fixedVariables_ == other.fixedVariables_;
 }
 
+std::string ISAM2::equalsDetail(const ISAM2& other, double tol) {
+  std::string ret = "";
+  ret += "1.base:";
+  if (Base::equals(other, tol)) {
+    ret += "true";
+  } else {
+    ret += "false";
+  }
+
+  ret += " 2.theta:";
+  if (theta_.equals(other.theta_, tol)) {
+    ret += "true";
+  } else {
+    ret += "false";
+  }
+
+  ret += " 3.variableIndex:";
+  if (variableIndex_.equals(other.variableIndex_, tol)) {
+    ret += "true";
+  } else {
+    ret += "false";
+  }
+
+  ret += " 4.nonlinearFactors:";
+  if (nonlinearFactors_.equals(other.nonlinearFactors_, tol)) {
+    ret += "true";
+  } else {
+    ret += "false";
+  }
+  ret += " 5.fixedVariables_:";
+  if (fixedVariables_ == other.fixedVariables_) {
+    ret += "true";
+  } else {
+    ret += "false";
+  }
+  return ret;
+}
+
 /* ************************************************************************* */
 size_t ISAM2::treeNnz() const {
   size_t nnz = 0;
@@ -1052,4 +1090,117 @@ std::pair<KeySet, bool> ISAM2::predictUpdateInfo(
   return {affectedKeys, affectedKeys.size() >= theta_.size() * 0.65};
 }
 
+
+/* ************************************************************************* */
+std::shared_ptr<ISAM2Clique> ISAM2::deepCopyClique(
+    const std::shared_ptr<ISAM2Clique>& originalNode,
+    std::unordered_map<Key, std::shared_ptr<ISAM2Clique>>& cliqueMemo) {
+  // Lookup frontal key (each clique has unique frontal key)
+  Key frontalKey = originalNode->conditional()->front();
+
+  // Memoization: check if already copied
+  if (cliqueMemo.find(frontalKey) != cliqueMemo.end())
+    return cliqueMemo[frontalKey];
+
+  // 1) Copy base part shallowly first (calls copy ctor)
+  // std::cout << "originalNode ";
+  auto copy = std::make_shared<ISAM2Clique>(*originalNode);
+
+  // 2) Deep copy conditional_
+  //std::cout << "conditional_ ";
+  if (originalNode->conditional_) {
+    auto originalGC = std::dynamic_pointer_cast<GaussianConditional>(
+        originalNode->conditional_);
+    if (!originalGC) {
+      throw std::runtime_error("Expected GaussianConditional in ISAM2Clique");
+    }
+    // Construct a new GaussianConditional with the same keys, matrix, and
+    // shared noise model
+    auto newGC = std::make_shared<GaussianConditional>(
+        originalGC->keys(), originalGC->nrFrontals(),
+        originalGC->matrixObject(),
+        originalGC->get_model()  // reuse same shared noise model
+    );
+    copy->conditional_ = newGC;
+
+  };
+
+  // 3) Deep copy cachedFactor_
+  //std::cout << "cachedFactor_ ";
+  if (originalNode->cachedFactor_) {
+    copy->cachedFactor_ = originalNode->cachedFactor_->clone();
+  }
+
+  // 4) Deep copy gradientContribution_ (Eigen vector deep copied by assignment)
+  // std::cout << "gradientContribution_ ";
+   copy->gradientContribution_ = originalNode->gradientContribution_;
+
+  // Register early to avoid recursion loops
+  for (Key frontalKey : copy->conditional()->frontals()) {
+    cliqueMemo[frontalKey] = copy;
+  }
+
+  // 5) Recursively deep copy children
+  // std::cout << "children \n";
+  copy->children.clear();
+  if (!originalNode->children.empty()) {
+    for (const auto& child_ptr : originalNode->children) {
+      auto childCopy = deepCopyClique(child_ptr, cliqueMemo);  // recursive
+      childCopy->setParent(copy);  // fix parent pointer
+      copy->children.push_back(childCopy);
+    }
+  }
+  return copy;
+}
+    /* ************************************************************************* */
+ISAM2 ISAM2::deepClone(ISAM2Params isamParam) {
+  ISAM2 newIsam = ISAM2(isamParam);
+  
+  //std::cout << "1.newTheta\n";
+  Values newTheta(theta_);
+  newIsam.setTheta(newTheta);
+
+  //std::cout << "2.newDelta\n";
+  newIsam.setDelta(cloneVectorValues(delta_), cloneVectorValues(deltaNewton_),
+                   cloneVectorValues(RgProd_), doglegDelta_);
+
+  //std::cout << "3.newDeltaReplacedMask\n";
+  KeySet newDeltaReplacedMask = cloneKeySet(deltaReplacedMask_);
+  newIsam.setDeltaReplacedMask(newDeltaReplacedMask);
+
+  //std::cout << "4.newFactorGraph\n";
+  NonlinearFactorGraph newNonlinearFactors = nonlinearFactors_.clone();
+  
+  //std::cout << "4_1.newLinearFactors\n";
+  GaussianFactorGraph newLinearFactors = linearFactors_.clone();
+  newIsam.setFactors(newNonlinearFactors, newLinearFactors);
+
+  //std::cout << "5.newVariables\n";
+  KeySet newFixedVariables = cloneKeySet(fixedVariables_);
+  VariableIndex newVariableIndex = variableIndex_;
+  newIsam.setVariables(newFixedVariables, newVariableIndex);
+
+  newIsam.setCounter(update_count_);
+
+  //std::cout << "6 newTreeNode_Roots\n";
+  Nodes newNodes;
+  Roots newRoot;
+  std::unordered_map<Key, std::shared_ptr<ISAM2Clique>> cliqueMemo;
+
+  newNodes.clear();
+  newRoot.clear();
+
+ for (const auto& root_ptr : Base::roots_) {
+    auto clonedRoot = deepCopyClique(root_ptr, cliqueMemo);
+    newRoot.push_back(clonedRoot);
+  }
+ for (const auto& kv : cliqueMemo) {
+   newNodes[kv.first] = kv.second;
+ }
+
+  newIsam.setBayesTree(newNodes, newRoot);
+
+  //std::cout << "7. fin\n";
+  return newIsam;
+}
 }  // namespace gtsam

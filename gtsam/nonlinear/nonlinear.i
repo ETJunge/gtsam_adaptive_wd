@@ -1005,6 +1005,14 @@ virtual class FixedLagSmoother {
       const gtsam::FixedLagSmootherKeyTimestampMap& timestamps =
           gtsam::FixedLagSmootherKeyTimestampMap(),
       const gtsam::FactorIndices& factorsToRemove = gtsam::FactorIndices());
+  gtsam::FixedLagSmootherResult update(
+      const gtsam::NonlinearFactorGraph& newFactors =
+          gtsam::NonlinearFactorGraph(),
+      const gtsam::Values& newTheta = gtsam::Values(),
+      const gtsam::FixedLagSmootherKeyTimestampMap& timestamps =
+          gtsam::FixedLagSmootherKeyTimestampMap(),
+      const gtsam::FactorIndices& factorsToRemove = gtsam::FactorIndices(),
+      const double adaptiveSmootherLag);
   gtsam::Values calculateEstimate() const;
   gtsam::Values calculateEstimate(const gtsam::KeyVector& keys) const;
 };
@@ -1030,14 +1038,19 @@ virtual class BatchFixedLagSmoother : gtsam::FixedLagSmoother {
                      gtsam::imuBias::ConstantBias,
                      gtsam::Vector, gtsam::Matrix}>
   VALUE calculateEstimate(gtsam::Key key) const;
+  
+  gtsam::Values getInitialTheta() const;
+  gtsam::BatchFixedLagSmoother deepClone() const;
 };
 
 #include <gtsam/nonlinear/IncrementalFixedLagSmoother.h>
 virtual class IncrementalFixedLagSmoother : gtsam::FixedLagSmoother {
   IncrementalFixedLagSmoother();
   IncrementalFixedLagSmoother(double smootherLag);
-  IncrementalFixedLagSmoother(double smootherLag,
-                              const gtsam::ISAM2Params& parameters);
+  IncrementalFixedLagSmoother(double smootherLag, const gtsam::ISAM2Params& parameters);
+
+  void print(string s = "IncrementalFixedLagSmoother:\n") const;
+  string equalsDetail(const gtsam::FixedLagSmoother& rhs, double tol);
 
   gtsam::Matrix marginalCovariance(gtsam::Key key) const;
   const gtsam::ISAM2Params& params() const;
@@ -1047,6 +1060,16 @@ virtual class IncrementalFixedLagSmoother : gtsam::FixedLagSmoother {
   const gtsam::VectorValues& getDelta() const;
   const gtsam::ISAM2& getISAM2() const;
   const gtsam::ISAM2Result& getISAM2Result() const;
+  gtsam::ISAM2 getSubISAM2() const;
+  gtsam::Values getInitialTheta() const;
+
+  gtsam::Values calculateSubEstimate(double adaptiveSmootherLag, gtsam::ISAM2Params& isamParam) const;
+
+  gtsam::IncrementalFixedLagSmoother deepClone() const;
+  gtsam::IncrementalFixedLagSmoother deepClone(const bool rewrite) const;
+
+  void forceRelinearize();
+};
 
   // Mirrors gtsam::ISAM2::calculateEstimate<VALUE>, which this forwards to.
   template <VALUE = {double,

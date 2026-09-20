@@ -57,7 +57,7 @@ Vector CustomFactor::unwhitenedError(const Values& x, OptionalMatrixVecType H) c
 }
 
 void CustomFactor::print(const std::string &s, const KeyFormatter &keyFormatter) const {
-  std::cout << s << "CustomFactor on ";
+  std::cout << s << factor_name_ << " on ";
   auto keys_ = this->keys();
   bool f = false;
   for (const Key &k: keys_) {
@@ -67,6 +67,7 @@ void CustomFactor::print(const std::string &s, const KeyFormatter &keyFormatter)
     f = true;
   }
   std::cout << "\n";
+  std::cout << "  Infomation: " << this->factor_info_ << "\n";
   if (this->noiseModel_)
     this->noiseModel_->print("  noise model: ");
   else

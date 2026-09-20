@@ -238,6 +238,9 @@ class PreintegratedImuMeasurements {
   bool equals(
       const gtsam::PreintegratedImuMeasurements& expected, double tol) const;
 
+  // 
+  PreintegratedImuMeasurements deepClone();
+
   // Standard Interface
   @pybind_lambda
   void integrateMeasurement(

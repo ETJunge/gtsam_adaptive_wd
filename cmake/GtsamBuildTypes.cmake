@@ -121,7 +121,7 @@ if(MSVC)
   set(CMAKE_3_15 $<VERSION_LESS:${CMAKE_VERSION},3.15>)
   set(CMAKE_3_25 $<VERSION_LESS:${CMAKE_VERSION},3.25>)
   # Common to all configurations, next for each configuration:
-  set(gtsam_compile_options_private_common /W3 /GR /EHsc /MP)
+  set(gtsam_compile_options_private_common /W3 /WX- /GR /EHsc /MP)
   if(GTSAM_BUILD_WITH_WERROR)
     set(gtsam_compile_options_private_werror /WX)
   endif()
