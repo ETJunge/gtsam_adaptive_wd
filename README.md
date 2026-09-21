@@ -1,184 +1,177 @@
 
-# GTSAM: Georgia Tech Smoothing and Mapping Library
-[![C++ API](https://img.shields.io/badge/API-C%2B%2B-blue.svg)](https://gtsam.org/doxygen/)
-[![Docs](https://img.shields.io/badge/Docs-Python%20%7C%20C%2B%2B-green.svg)](https://borglab.github.io/gtsam/)
+# Adapted GTSAM
 
-<p align="center">
-  <a href="https://borglab.github.io/gtsam/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="doc/images/gtsam-manifold-optimization-dark.png">
-      <source media="(prefers-color-scheme: light)" srcset="doc/images/gtsam-manifold-optimization-light.png">
-      <img alt="GTSAM manifold optimization workflow: build a factor graph, linearize and solve in tangent spaces, retract to manifolds, and iterate to convergence." src="doc/images/gtsam-manifold-optimization-light.png" width="100%">
-    </picture>
-  </a>
-</p>
+<!-- Badges -->
+![Upstream GTSAM](https://img.shields.io/badge/Upstream%20GTSAM-4.3.0-green)
+![License](https://img.shields.io/github/license/borglab/gtsam)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Ubuntu-blue)
+![Python](https://img.shields.io/badge/python-3.11--3.14-blue)
 
-**Development branch**
+This repository is a **fork of [borglab/gtsam](https://github.com/borglab/gtsam)** with custom modifications and build adaptations.
 
-The `develop` branch contains changes intended for the next GTSAM release and
-may include API changes. For production use, choose the latest stable version
-from the [GTSAM releases](https://github.com/borglab/gtsam/releases). Current
-development builds require C++17; Boost support is optional and controlled by
-CMake options.
+GTSAM (Georgia Tech Smoothing And Mapping) is a C++ library for smoothing and mapping (SAM) in robotics and computer vision, based on **factor graphs** and **Bayes networks**.
 
-## What is GTSAM?
+This fork is based on **GTSAM 4.3.0** and focuses on:
+- Custom code modifications
+- Improved Windows build stability
 
-GTSAM is a C++ library that implements smoothing and
-mapping (SAM) in robotics and vision, using Factor Graphs and Bayes
-Networks as the underlying computing paradigm rather than sparse
-matrices.
+---
+
+## 📑 Table of Contents
+
+- [Features of This Fork](#-features-of-this-fork)
+- [Supported Platforms](#-supported-platforms)
+- [Prerequisites](#-prerequisites)
+- [Build Instructions (Windows)](#-build-instructions-windows)
+- [Build Instructions (Ubuntu 22.04)](#-build-instructions-ubuntu-2204)
+- [Python Usage](#-python-usage)
+- [Building Python Wheels (Windows)](#-building-python-wheels-windows)
+- [References](#-references)
+- [License](#-license)
+- [Acknowledgements](#-acknowledgements)
+- [Disclaimer](#-disclaimer)
+- [Contact & Support](#contact--support)
+
+## 🚀 Features of This Fork
+
+Compared to the upstream GTSAM repository, this fork includes:
+
+- Custom modifications to the GTSAM source code, including variable-lag iSAM2 smoother, deep-clone of `iSAM` object, and advanced `CustomFactor` class
+- Improved compatibility with **Windows 10/11 + Visual Studio 2022**
+- Support for **Python 3.11-3.14**
+- Adjusted CMake configuration for:
+  - Boost
+  - Intel MKL / TBB (optional)
+- Disabled `/WX` (treat warnings as errors) in multiple projects for MSVC
+- Fixed some bugs
+
+> ⚠️ This repository is intended for **research, experimentation, and development**.  
+> It is not an official replacement for upstream GTSAM.
+
+---
 
 
+## 🧩 Supported Platforms
 
-<!-- Main CI Badges (develop branch) -->
-| CI Status | Platform | Compiler |
-|:----------|:---------|:---------|
-| [![Python CI](https://github.com/borglab/gtsam/actions/workflows/build-python.yml/badge.svg?branch=develop)](https://github.com/borglab/gtsam/actions/workflows/build-python.yml?query=branch%3Adevelop) | Ubuntu 22.04, macOS 15, Windows 2022 | GCC/Clang/MSVC |
-| [![vcpkg](https://github.com/borglab/gtsam/actions/workflows/vcpkg.yml/badge.svg?branch=develop)](https://github.com/borglab/gtsam/actions/workflows/vcpkg.yml?query=branch%3Adevelop) | Latest Windows/Ubuntu/Mac | - |
-| [![Build Wheels for Develop](https://github.com/borglab/gtsam/actions/workflows/build-cibw.yml/badge.svg?branch=develop)](https://github.com/borglab/gtsam/actions/workflows/build-cibw.yml?query=branch%3Adevelop) | See [pypi files](https://pypi.org/project/gtsam-develop/#files); no Windows| - |
+| Platform | Compiler | Python | Status |
+|--------|----------|--------|--------|
+| Windows 10 / 11 | MSVC 14.3 (VS 2022) | 3.11 | Tested |
+| Ubuntu 22.04 | GCC | 3.11-3.14 | Tested |
 
-On top of the C++ library, GTSAM includes [wrappers for MATLAB & Python](#wrappers).
-
-
-## Documentation
-
-- **C++ API Docs:** [https://gtsam.org/doxygen/](https://gtsam.org/doxygen/)
-- **Python API Docs:** [https://borglab.github.io/gtsam/](https://borglab.github.io/gtsam/)
-- **CUDA linear solvers:** [doc/CUDA_LINEAR_SOLVERS.md](doc/CUDA_LINEAR_SOLVERS.md)
-<!-- TODO: Perhaps include links to source code as well? But the wrappers doesn't really help too much understanding the source code. 
-C++: https://github.com/borglab/gtsam/tree/develop/gtsam
-Matlab wrapper: https://github.com/borglab/gtsam/blob/develop/matlab/README.md
-Python wrapper https://github.com/borglab/gtsam/blob/develop/python/README.md
--->
+---
 
 
-## Quickstart
+## 📦 Prerequisites
 
-In the root library folder execute:
+### Common
+- CMake ≥ 3.16
+- Git
+- Boost ≥ 1.81
+- Python (virtual environment recommended)
 
-```sh
-cmake -S . -B build
-cmake --build build --target check  # optional, runs all unit tests
-cmake --build build --target install
+### Optional (Performance)
+- Intel oneAPI (MKL, TBB, MPI)
+
+---
+
+
+## 🪟 Build Instructions (Windows)
+
+**Tested environment**
+- Windows 10/11
+- Visual Studio 2022 (Desktop development with C++)
+- Anaconda + Python 3.11
+- GTSAM 4.3.0
+
+### 1. Create Python Environment
+```bash
+conda create -n py3_11_gtsam_43 python=3.11
+conda activate py3_11_gtsam_43
+conda install numpy pyparsing matplotlib pybind11
+pip install pybind11-stubgen cibuildwheel
+```
+### 2. Configure with CMake
+
+From the repository root:
+```bash
+cmake -S . -B build ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DGTSAM_BUILD_PYTHON=ON ^
+  -DGTSAM_PYTHON_VERSION=3.11 ^
+  -DGTSAM_ENABLE_BOOST_SERIALIZATION=OFF ^
+  -DGTSAM_USE_BOOST_FEATURES=OFF
+```
+Optional flags:
+
+```bash
+-DGTSAM_BUILD_UNSTABLE=OFF
+-DGTSAM_WITH_TBB=ON
+-DGTSAM_WITH_EIGEN_MKL=ON
+```
+### 3. Build with Visual Studio
+
+- Open build/GTSAM.sln as Administrator
+- Switch to Release
+- Build target: ALL_BUILD
+
+## 🐧 Build Instructions (Ubuntu 22.04)
+Some pre-built wheels are available in the `Releases` page of this repository
+### 1. Install Dependencies
+```bash
+sudo apt update
+sudo apt install build-essential cmake libboost-all-dev python3-pip git
 ```
 
-Prerequisites:
-
-- [CMake](https://cmake.org/download/) 3.16 or newer
-- A compiler with C++17 support. The continuously tested toolchains are:
-    - Linux: GCC 11, 13, 14, or 15 and Clang 11, 14, or 16
-    - macOS: Xcode 16
-    - Windows: MSVC toolset 14.40
-
-Older C++17-capable toolchains may work but are not continuously tested.
-
-Optional Boost prerequisite:
-
-Boost is optional. Two CMake flags govern its use:
-
-- `GTSAM_USE_BOOST_FEATURES=ON|OFF` controls the remaining Boost-dependent features.
-- `GTSAM_ENABLE_BOOST_SERIALIZATION=ON|OFF` controls Boost serialization of factor graphs, factors, and related types.
-
-Both options default to ON for ordinary CMake builds and OFF inside ROS 2
-`colcon` builds. If either option is ON, install
-[Boost](https://www.boost.org/users/download/) 1.70 or newer:
-
-- macOS: `brew install boost`
-- Ubuntu: `sudo apt-get install libboost-all-dev`
-- Windows: use [vcpkg](https://github.com/microsoft/vcpkg), or see
-  [cmake/HandleBoost.cmake](cmake/HandleBoost.cmake) for manual-installation hints.
-
-Optional prerequisites:
-
-- [oneTBB](https://github.com/uxlfoundation/oneTBB) is searched for when
-  `GTSAM_WITH_TBB=ON`, which is the default. On Ubuntu, install `libtbb-dev`.
-- [Intel oneMKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html)
-  is used only when `GTSAM_WITH_EIGEN_MKL=ON`. See [INSTALL.md](INSTALL.md) for
-  setup instructions, and benchmark your workload with and without MKL.
-
-## GTSAM 4 Compatibility
-
-GTSAM 4 introduced Expressions, a Python toolbox, and traits that allow
-optimization with non-GTSAM types. `Point2` and `Point3` are Eigen vector aliases;
-their default constructors do not initialize their coefficients, so initialize
-them explicitly before use.
-
-`GTSAM_ALLOW_DEPRECATED_SINCE_V43` controls APIs deprecated for the GTSAM 4.3
-release and defaults to ON. Disable it while migrating code to identify APIs
-scheduled for removal after 4.3.
-
-
-## Wrappers
-
-We provide support for [MATLAB](matlab/README.md) and [Python](python/README.md) wrappers for GTSAM. Please refer to the linked documents for more details.
-
-## Citation
-
-If you are using GTSAM for academic work, please use the following citation:
-
-```bibtex
-@software{gtsam,
-  author    = {Frank Dellaert and GTSAM Contributors},
-  title     = {GTSAM},
-  year      = {2022},
-  publisher = {Zenodo},
-  doi       = {10.5281/zenodo.5794541},
-  url       = {https://doi.org/10.5281/zenodo.5794541}
-}
+### 2. Python Dependencies
+```bash
+pip install -r python/dev_requirements.txt
+pip install pybind11-stubgen
 ```
 
-To cite the `Factor Graphs for Robot Perception` book, please use:
-```bibtex
-@book{factor_graphs_for_robot_perception,
-    author={Frank Dellaert and Michael Kaess},
-    year={2017},
-    title={Factor Graphs for Robot Perception},
-    publisher={Foundations and Trends in Robotics, Vol. 6},
-    url={http://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf}
-}
+### 3. Build
+```bash
+mkdir build && cd build
+cmake .. -DGTSAM_BUILD_PYTHON=ON -DCMAKE_INSTALL_PREFIX=./install
+make -j4
+make python-install
+```
+⚠️ Avoid using sudo during installation to prevent permission issues.
+## 🐍 Python Usage
+After installation:
+```bash
+import gtsam
+print(gtsam.__version__)
+```
+Python examples are located in:
+```bash
+python/gtsam/examples
+```
+## 📦 Building Python Wheels (Windows)
+This fork supports building Python wheels using `cibuildwheel`.
+```bash
+python -m cibuildwheel build/python ^
+  --output-dir ./wheelhouse ^
+  --config-file pyproject.toml
+```
+Install locally:
+```bash
+pip install wheelhouse/gtsam-4.3.0.dev1-cp311-cp311-win_amd64.whl
 ```
 
-If you are using the IMU preintegration scheme, please cite:
-```bibtex
-@inproceedings{Forster-RSS-15,
-    author    = {Christian Forster and Luca Carlone and Frank Dellaert and Davide Scaramuzza},
-    title     = {IMU Preintegration on Manifold for Efficient Visual-Inertial Maximum-a-Posteriori Estimation},
-    booktitle = {Proceedings of Robotics: Science and Systems},
-    year      = {2015},
-    address   = {Rome, Italy},
-    month     = {July},
-    doi       = {10.15607/RSS.2015.XI.006}
-}
-```
+## 📚 References
+- GTSAM GitHub: https://github.com/borglab/gtsam
+- GTSAM Documentation: https://gtsam.org
+- F. Dellaert, Factor Graphs for Robot Perception, Foundations and Trends in Robotics, 2012
 
+## 📄 License
+This project follows the same license as the upstream GTSAM project.
 
-## The Preintegrated IMU Factor
+See the upstream license file:
+https://github.com/borglab/gtsam/blob/develop/LICENSE
 
-GTSAM includes a state of the art IMU handling scheme based on
+## 🙏 Acknowledgements
+- Frank Dellaert and the GTSAM authors
+- BorgLab, Georgia Institute of Technology
 
-- Todd Lupton and Salah Sukkarieh, _"Visual-Inertial-Aided Navigation for High-Dynamic Motion in Built Environments Without Initial Conditions"_, TRO, 28(1):61-76, 2012. [[link]](https://ieeexplore.ieee.org/document/6092505)
-
-Our implementation improves on this using integration on the manifold, as detailed in
-
-- Christian Forster, Luca Carlone, Frank Dellaert, and Davide Scaramuzza, _"IMU Preintegration on Manifold for Efficient Visual-Inertial Maximum-a-Posteriori Estimation"_, Robotics: Science and Systems (RSS), 2015. [[link]](https://www.roboticsproceedings.org/rss11/p06.pdf)
-
-If you are using the factor in academic work, please cite the publications above.
-
-In GTSAM 4 a new and more efficient implementation, based on integrating on the NavState tangent space and detailed in [this document](doc/ImuFactor.pdf), is enabled by default. To switch to the RSS 2015 version, set the flag `GTSAM_TANGENT_PREINTEGRATION` to OFF.
-
-
-## Additional Information
-
-There is a [GTSAM users Google group](https://groups.google.com/forum/#!forum/gtsam-users) for general discussion.
-
-Read about important [GTSAM concepts](doc/GTSAM-Concepts.md). A primer on
-GTSAM Expressions, which support efficient automatic differentiation, is
-available in [doc/expressions.md](doc/expressions.md).
-
-See the [`INSTALL`](INSTALL.md) file for more detailed installation instructions. Our CI/CD process is detailed in [workflows.md](doc/workflows.md).
-
-GTSAM is open source under the BSD license, see the [`LICENSE`](LICENSE) and [`LICENSE.BSD`](LICENSE.BSD) files.
-
-Please see the [`examples/`](examples) directory and the [`USAGE`](USAGE.md) file for examples on how to use GTSAM.
-
-GTSAM was developed in the lab of [Frank Dellaert](http://www.cc.gatech.edu/~dellaert) at the [Georgia Institute of Technology](http://www.gatech.edu), with the help of many contributors over the years, see [THANKS](THANKS.md).
+## ⚠️ Disclaimer
+This is an independent fork and is not officially supported by the GTSAM maintainers.
