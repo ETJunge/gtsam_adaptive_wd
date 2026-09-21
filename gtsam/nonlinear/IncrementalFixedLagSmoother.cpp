@@ -303,9 +303,12 @@ Values IncrementalFixedLagSmoother::calculateSubEstimate(
   // Find the set of variables to be marginalized out
   KeyVector marginalizableKeys =
       findKeysBefore(current_timestamp - smootherLagToUse);
-
+  const VariableIndex& variableIndex = isam_.getVariableIndex();
+  const auto isActive = [&](Key key) {
+    return variableIndex.find(key) != variableIndex.end();
+  };
   // Force iSAM2 to put the marginalizable variables at the beginning
-  createOrderingConstraints(marginalizableKeys, constrainedKeys);
+  createOrderingConstraints(marginalizableKeys, isActive, constrainedKeys);
 
   std::unordered_set<Key> additionalKeys =
       BayesTreeMarginalizationHelper<ISAM2>::gatherAdditionalKeysToReEliminate(
