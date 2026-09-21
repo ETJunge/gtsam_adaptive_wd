@@ -1069,7 +1069,6 @@ virtual class IncrementalFixedLagSmoother : gtsam::FixedLagSmoother {
   gtsam::IncrementalFixedLagSmoother deepClone(const bool rewrite) const;
 
   void forceRelinearize();
-};
 
   // Mirrors gtsam::ISAM2::calculateEstimate<VALUE>, which this forwards to.
   template <VALUE = {double,
