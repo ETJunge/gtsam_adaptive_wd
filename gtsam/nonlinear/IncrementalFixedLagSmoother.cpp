@@ -332,9 +332,9 @@ Values IncrementalFixedLagSmoother::calculateSubEstimate(
 }
 
 /* ************************************************************************* */
-const IncrementalFixedLagSmoother IncrementalFixedLagSmoother::deepClone(
+const IncrementalFixedLagSmoother& IncrementalFixedLagSmoother::deepClone(
     const bool rewrite) {
-  IncrementalFixedLagSmoother outputSmoother(smootherLag_, params());
+  IncrementalFixedLagSmoother* outputSmoother = new IncrementalFixedLagSmoother(smootherLag_, params());
 
   std::string fileName = "saved_solver.xml";
   ISAM2 outputIsam;
@@ -344,14 +344,14 @@ const IncrementalFixedLagSmoother IncrementalFixedLagSmoother::deepClone(
   } else {
     outputIsam = isam_;
   }
-  outputSmoother.setISAM2(outputIsam);
+  outputSmoother->setISAM2(outputIsam);
 
   Values newInitialTheta(initialTheta_);
-  outputSmoother.setInitialTheta(newInitialTheta);
+  outputSmoother->setInitialTheta(newInitialTheta);
 
   // outputSmoother.updateKeyTimestampMap(keyTimestampMap_);
-  outputSmoother.setKeyTimestampMap(keyTimestampMap_, timestampKeyMap_);
-  return outputSmoother;
+  outputSmoother->setKeyTimestampMap(keyTimestampMap_, timestampKeyMap_);
+  return *outputSmoother;
 }
 
 /* ************************************************************************* */

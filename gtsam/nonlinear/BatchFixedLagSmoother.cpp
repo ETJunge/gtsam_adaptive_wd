@@ -512,17 +512,17 @@ NonlinearFactorGraph BatchFixedLagSmoother::CalculateMarginalFactors(
 }
 
 /* ************************************************************************* */
-const BatchFixedLagSmoother BatchFixedLagSmoother::deepClone(){
-  BatchFixedLagSmoother outputSmoother(smootherLag_, params(),enforceConsistency_);
-  outputSmoother.factorIndex_ = factorIndex_;
-  outputSmoother.factors_ = factors_.clone();
-  outputSmoother.theta_ = theta_;
-  outputSmoother.linearValues_ = linearValues_;
-  outputSmoother.ordering_ = ordering_;
-  outputSmoother.delta_ = delta_;
-  outputSmoother.availableSlots_ = availableSlots_;
+const BatchFixedLagSmoother& BatchFixedLagSmoother::deepClone(){
+  BatchFixedLagSmoother* outputSmoother = new BatchFixedLagSmoother(smootherLag_, params(),enforceConsistency_);
+  outputSmoother->factorIndex_ = factorIndex_;
+  outputSmoother->factors_ = factors_.clone();
+  outputSmoother->theta_ = theta_;
+  outputSmoother->linearValues_ = linearValues_;
+  outputSmoother->ordering_ = ordering_;
+  outputSmoother->delta_ = delta_;
+  outputSmoother->availableSlots_ = availableSlots_;
 
-  outputSmoother.initialTheta_ = initialTheta_;
-  return outputSmoother;
+  outputSmoother->initialTheta_ = initialTheta_;
+  return *outputSmoother;
 }
 } /// namespace gtsam

@@ -151,7 +151,7 @@ public:
 
   /** Deep clone the current Smoother
    */
-  const BatchFixedLagSmoother deepClone();
+  const BatchFixedLagSmoother& deepClone();
 
   /// Get the initial value when calling update()
   const gtsam::Values& getInitialTheta() const { return initialTheta_; }
